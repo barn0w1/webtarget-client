@@ -28,7 +28,8 @@ export function useSession(words: Word[], config: SessionConfig): {
   queueLength: number;
   completedCount: number;
   totalCount: number;
-  submitAnswer: (input: string) => 'correct' | 'incorrect' | 'complete';
+  evaluateAnswer: (input: string) => 'correct' | 'incorrect';
+  advance: (isCorrect: boolean) => void;
   result: SessionResult | null;
 } {
   const [state] = useState<SessionState>(() => {
@@ -48,50 +49,36 @@ export function useSession(words: Word[], config: SessionConfig): {
   const [completedIds, setCompletedIds] = useState<Set<number>>(state.completedIds);
   const [result, setResult] = useState<SessionResult | null>(null);
 
-  const submitAnswer = useCallback((input: string): 'correct' | 'incorrect' | 'complete' => {
-    if (queue.length === 0 || result !== null) return 'correct';
+  const evaluateAnswer = useCallback((input: string): 'correct' | 'incorrect' => {
+    if (queue.length === 0) return 'incorrect';
+    return input.trim().toLowerCase() === queue[0].word.trim().toLowerCase()
+      ? 'correct'
+      : 'incorrect';
+  }, [queue]);
 
-    const currentWord = queue[0];
-    const normalizedInput = input.trim().toLowerCase();
-    const normalizedTarget = currentWord.word.trim().toLowerCase();
+  const advance = useCallback((isCorrect: boolean): void => {
+    if (queue.length === 0 || result !== null) return;
+    const current = queue[0];
 
-    if (normalizedInput === normalizedTarget) {
+    if (isCorrect) {
       const newCompletedIds = new Set(completedIds);
-      newCompletedIds.add(currentWord.id);
+      newCompletedIds.add(current.id);
       const newQueue = queue.slice(1);
-
-      if (newCompletedIds.size === state.allWords.length) {
-        setQueue(newQueue);
-        setCompletedIds(newCompletedIds);
-        const finalResult = buildResult({
-          ...state,
-          queue: newQueue,
-          incorrectCounts,
-          completedIds: newCompletedIds,
-        });
-        setResult(finalResult);
-        return 'complete';
-      }
-
       setQueue(newQueue);
       setCompletedIds(newCompletedIds);
-      return 'correct';
+      if (newCompletedIds.size === state.allWords.length) {
+        setResult(buildResult({ ...state, queue: newQueue, incorrectCounts, completedIds: newCompletedIds }));
+      }
     } else {
       const newIncorrectCounts = new Map(incorrectCounts);
-      newIncorrectCounts.set(currentWord.id, (newIncorrectCounts.get(currentWord.id) ?? 0) + 1);
-
+      newIncorrectCounts.set(current.id, (newIncorrectCounts.get(current.id) ?? 0) + 1);
       const remaining = queue.slice(1);
-      let insertIndex: number;
-      if (remaining.length === 0) {
-        insertIndex = 0;
-      } else {
-        insertIndex = Math.floor(Math.random() * remaining.length) + 1;
-      }
-      const newQueue = [...remaining.slice(0, insertIndex), currentWord, ...remaining.slice(insertIndex)];
-
+      const insertIndex = remaining.length === 0
+        ? 0
+        : Math.floor(Math.random() * remaining.length) + 1;
+      const newQueue = [...remaining.slice(0, insertIndex), current, ...remaining.slice(insertIndex)];
       setQueue(newQueue);
       setIncorrectCounts(newIncorrectCounts);
-      return 'incorrect';
     }
   }, [queue, completedIds, incorrectCounts, result, state]);
 
@@ -100,7 +87,8 @@ export function useSession(words: Word[], config: SessionConfig): {
     queueLength: queue.length,
     completedCount: completedIds.size,
     totalCount: state.allWords.length,
-    submitAnswer,
+    evaluateAnswer,
+    advance,
     result,
   };
 }

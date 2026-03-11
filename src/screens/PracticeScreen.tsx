@@ -17,15 +17,17 @@ export default function PracticeScreen({ words }: Props) {
   return <PracticeSession words={words} config={config} />;
 }
 
+type CardState =
+  | { phase: 'idle' }
+  | { phase: 'feedback'; userInput: string; correctAnswer: string; isCorrect: boolean };
+
 function PracticeSession({ words, config }: { words: Word[]; config: SessionConfig }) {
   const navigate = useNavigate();
-  const { currentWord, queueLength, completedCount, totalCount, submitAnswer, result } =
+  const { currentWord, queueLength, completedCount, totalCount, evaluateAnswer, advance, result } =
     useSession(words, config);
 
   const [input, setInput] = useState('');
-  // null = awaiting input; non-null = review state (stores what the user typed)
-  const [submittedInput, setSubmittedInput] = useState<string | null>(null);
-  const [isCorrect, setIsCorrect] = useState(false);
+  const [card, setCard] = useState<CardState>({ phase: 'idle' });
   const startTimeRef = useRef(Date.now());
 
   useEffect(() => {
@@ -34,14 +36,19 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
 
   function handleSubmit() {
     if (!currentWord || input.trim() === '') return;
-    const outcome = submitAnswer(input);
-    if (outcome === 'complete') return;
-    setSubmittedInput(input);
-    setIsCorrect(outcome === 'correct');
+    const outcome = evaluateAnswer(input);
+    setCard({
+      phase: 'feedback',
+      userInput: input,
+      correctAnswer: currentWord.word,
+      isCorrect: outcome === 'correct',
+    });
   }
 
   function handleNext() {
-    setSubmittedInput(null);
+    if (card.phase !== 'feedback') return;
+    advance(card.isCorrect);
+    setCard({ phase: 'idle' });
     setInput('');
   }
 
@@ -68,18 +75,15 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
         {currentWord && (
           <div className="w-full max-w-4xl border border-gray-200 rounded-2xl overflow-hidden">
             <div className="flex min-h-[300px]">
-              {/* Left: word prompt — always visible, never resets until Next is clicked */}
               <div className="flex-1 border-r border-gray-200 bg-white">
                 <WordPrompt word={currentWord} mode={config.mode} />
               </div>
-
-              {/* Right: input → review on submit */}
               <div className="w-80 flex-shrink-0 bg-surface-gray p-6 flex flex-col gap-4">
-                {submittedInput !== null ? (
+                {card.phase === 'feedback' ? (
                   <ReviewPanel
-                    submittedInput={submittedInput}
-                    correctAnswer={currentWord.word}
-                    isCorrect={isCorrect}
+                    userInput={card.userInput}
+                    correctAnswer={card.correctAnswer}
+                    isCorrect={card.isCorrect}
                     onNext={handleNext}
                   />
                 ) : (
@@ -95,18 +99,18 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
 }
 
 interface ReviewPanelProps {
-  submittedInput: string;
+  userInput: string;
   correctAnswer: string;
   isCorrect: boolean;
   onNext: () => void;
 }
 
-function ReviewPanel({ submittedInput, correctAnswer, isCorrect, onNext }: ReviewPanelProps) {
+function ReviewPanel({ userInput, correctAnswer, isCorrect, onNext }: ReviewPanelProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className={`flex items-center gap-2 ${isCorrect ? 'text-green-600' : 'text-red-500'}`}>
         <span className="text-base">{isCorrect ? '✅' : '❌'}</span>
-        <span className="text-sm font-medium">{isCorrect ? 'Correct' : 'Incorrect'}</span>
+        <span className="text-sm font-medium">{isCorrect ? 'Correct!' : 'Incorrect'}</span>
       </div>
 
       <div>
@@ -116,12 +120,12 @@ function ReviewPanel({ submittedInput, correctAnswer, isCorrect, onNext }: Revie
             ? 'bg-green-50 border-green-200 text-green-800'
             : 'bg-red-50 border-red-200 text-red-700 line-through'
         }`}>
-          {submittedInput}
+          {userInput}
         </p>
       </div>
 
       <div>
-        <p className="text-xs text-gray-400 mb-1.5">Answer</p>
+        <p className="text-xs text-gray-400 mb-1.5">The answer is</p>
         <p className="text-sm font-mono px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-900 font-semibold">
           {correctAnswer}
         </p>
@@ -129,7 +133,6 @@ function ReviewPanel({ submittedInput, correctAnswer, isCorrect, onNext }: Revie
 
       <button
         type="button"
-        autoFocus
         onClick={onNext}
         className="w-full mt-auto bg-blue-google text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-blue-google-hover transition-colors duration-150 cursor-pointer"
       >
