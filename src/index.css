@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+@theme {
+  --color-blue-google: #1a73e8;
+  --color-blue-google-hover: #1557b0;
+  --color-blue-google-light: #e8f0fe;
+}
