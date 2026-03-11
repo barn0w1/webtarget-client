@@ -22,6 +22,12 @@ No backend. No authentication. No localStorage. All state is ephemeral React sta
 src/data/words.json
 ```
 
+<!-- NOTE: words.json is actually 524KB. This is too large to bundle into the JS chunk.
+Move it to public/words.json and fetch it at app startup instead.
+Update the data layer section and all references to static import accordingly.
+Add a loading state to the app (before the setup screen appears).
+Remove any mention of "moving to public/ as a future concern" — this is the decision now. -->
+
 Words are imported statically through Vite's JSON module support. No runtime fetch needed.
 
 ### TypeScript types
@@ -205,6 +211,13 @@ export default function App() {
 
 ## 5. Routing
 
+<!-- NOTE: Reconsider this. A router adds real value here:
+- /practice and /results should be bookmarkable states (even if ephemeral session data resets, the URL tells the user where they are)
+- Browser back button should work intuitively (back from results → setup, not a broken experience)
+- It's more correct architecture for a deployed SPA on a custom domain
+Please revise this section to use React Router v6. Update component architecture and todo list accordingly.
+Keep the public/_redirects SPA rule. -->
+
 **Decision: No external router. Pure React state.**
 
 **Reasoning:**
@@ -239,6 +252,21 @@ The `public/_redirects` file still needs the SPA catch-all rule for Cloudflare P
 - No hint of the English word is shown
 
 ### EN→EN mode (`EnEnPrompt`)
+
+<!-- NOTE: The current exact-match regex approach is too brittle.
+Example sentences often contain conjugated or inflected forms of the target word
+(e.g. target: "create", sentence contains "creating" or "created").
+The exact \b{word}\b regex will fail to find these, triggering the fallback too often.
+
+Instead, use a token-based fuzzy approach:
+- Split the sentence into tokens (words/punctuation)
+- Find the token that has the highest overlap with the target word
+  (e.g. starts with the same stem, or one is a prefix of the other)
+- Remove that entire token from the rendering — don't try to reconstruct it, just blank it
+- This handles plurals, -ing, -ed, -er forms naturally without a full morphology library
+
+Update parseSentence (or rename/replace it) to implement this smarter approach.
+Show the revised algorithm with a code snippet. -->
 
 **Word hiding logic:**
 
