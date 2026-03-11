@@ -5,13 +5,10 @@ import { useSession } from '../hooks/useSession';
 import ProgressBar from '../components/ProgressBar';
 import WordPrompt from '../components/WordPrompt';
 import AnswerInput from '../components/AnswerInput';
-import FeedbackBanner from '../components/FeedbackBanner';
 
 interface Props {
   words: Word[];
 }
-
-type FeedbackState = 'correct' | 'incorrect' | null;
 
 export default function PracticeScreen({ words }: Props) {
   const { state } = useLocation();
@@ -26,54 +23,26 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
     useSession(words, config);
 
   const [input, setInput] = useState('');
-  const [feedback, setFeedback] = useState<FeedbackState>(null);
-  const [visible, setVisible] = useState(true);
+  // null = awaiting input; non-null = review state (stores what the user typed)
+  const [submittedInput, setSubmittedInput] = useState<string | null>(null);
+  const [isCorrect, setIsCorrect] = useState(false);
   const startTimeRef = useRef(Date.now());
-  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const blockedRef = useRef(false);
 
   useEffect(() => {
     if (result) navigate('/results', { state: { result }, replace: true });
   }, [result, navigate]);
 
-  function clearPendingAdvance() {
-    if (advanceTimerRef.current) {
-      clearTimeout(advanceTimerRef.current);
-      advanceTimerRef.current = null;
-    }
-  }
-
-  function advance() {
-    clearPendingAdvance();
-    blockedRef.current = false;
-    setFeedback(null);
-    setInput('');
-    setVisible(true);
-  }
-
-  function handleSubmitOrAdvance() {
-    if (blockedRef.current) {
-      advance();
-      return;
-    }
+  function handleSubmit() {
     if (!currentWord || input.trim() === '') return;
-
-    blockedRef.current = true;
-    setVisible(false);
-
     const outcome = submitAnswer(input);
     if (outcome === 'complete') return;
-
-    setFeedback(outcome);
-    advanceTimerRef.current = setTimeout(advance, outcome === 'correct' ? 800 : 1500);
+    setSubmittedInput(input);
+    setIsCorrect(outcome === 'correct');
   }
 
-  function handleInputChange(value: string) {
-    if (blockedRef.current) {
-      advance();
-    } else {
-      setInput(value);
-    }
+  function handleNext() {
+    setSubmittedInput(null);
+    setInput('');
   }
 
   const modeLabel = config.mode === 'jp-en' ? 'JP → EN' : 'EN → EN';
@@ -97,30 +66,75 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
         </header>
 
         {currentWord && (
-          <div
-            className={`w-full max-w-4xl border border-gray-200 rounded-2xl overflow-hidden transition-opacity duration-200 ${
-              visible ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
+          <div className="w-full max-w-4xl border border-gray-200 rounded-2xl overflow-hidden">
             <div className="flex min-h-[300px]">
-              {/* Left: question (white) */}
+              {/* Left: word prompt — always visible, never resets until Next is clicked */}
               <div className="flex-1 border-r border-gray-200 bg-white">
                 <WordPrompt word={currentWord} mode={config.mode} />
               </div>
 
-              {/* Right: answer area (gray) */}
+              {/* Right: input → review on submit */}
               <div className="w-80 flex-shrink-0 bg-surface-gray p-6 flex flex-col gap-4">
-                <AnswerInput
-                  value={input}
-                  onChange={handleInputChange}
-                  onSubmit={handleSubmitOrAdvance}
-                />
-                <FeedbackBanner state={feedback} correctAnswer={currentWord.word} />
+                {submittedInput !== null ? (
+                  <ReviewPanel
+                    submittedInput={submittedInput}
+                    correctAnswer={currentWord.word}
+                    isCorrect={isCorrect}
+                    onNext={handleNext}
+                  />
+                ) : (
+                  <AnswerInput value={input} onChange={setInput} onSubmit={handleSubmit} />
+                )}
               </div>
             </div>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+interface ReviewPanelProps {
+  submittedInput: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+  onNext: () => void;
+}
+
+function ReviewPanel({ submittedInput, correctAnswer, isCorrect, onNext }: ReviewPanelProps) {
+  return (
+    <div className="flex flex-col gap-4 h-full">
+      <div className={`flex items-center gap-2 ${isCorrect ? 'text-green-600' : 'text-red-500'}`}>
+        <span className="text-base">{isCorrect ? '✅' : '❌'}</span>
+        <span className="text-sm font-medium">{isCorrect ? 'Correct' : 'Incorrect'}</span>
+      </div>
+
+      <div>
+        <p className="text-xs text-gray-400 mb-1.5">Your answer</p>
+        <p className={`text-sm font-mono px-3 py-2 rounded-lg border ${
+          isCorrect
+            ? 'bg-green-50 border-green-200 text-green-800'
+            : 'bg-red-50 border-red-200 text-red-700 line-through'
+        }`}>
+          {submittedInput}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-xs text-gray-400 mb-1.5">Answer</p>
+        <p className="text-sm font-mono px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-900 font-semibold">
+          {correctAnswer}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        autoFocus
+        onClick={onNext}
+        className="w-full mt-auto bg-blue-google text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-blue-google-hover transition-colors duration-150 cursor-pointer"
+      >
+        Next →
+      </button>
     </div>
   );
 }
