@@ -6,9 +6,10 @@ A single-page application for practicing English vocabulary deployed to `webtarg
 
 **End-to-end flow:**
 
-1. **Setup screen** — user selects a word ID range (1–1900) and a practice mode (JP→EN or EN→EN), then starts a session.
-2. **Practice screen** — words from the selected range are shuffled into a queue. The user is shown a prompt and types the English word. Correct answers remove the word from the queue permanently; incorrect answers reinsert the word at a random later position. The session ends only when every word has been answered correctly at least once.
-3. **Results screen** — shows total elapsed time, accuracy rate (correct attempts / total attempts), and a ranked table of words the user missed most often, sorted descending by incorrect attempt count.
+1. **Loading state** — on first paint, the app fetches `words.json` from the CDN. A minimal spinner is shown until the data is ready.
+2. **Setup screen** — user selects a word ID range (1–1900) and a practice mode (JP→EN or EN→EN), then starts a session.
+3. **Practice screen** — words from the selected range are shuffled into a queue. The user is shown a prompt and types the English word. Correct answers remove the word from the queue permanently; incorrect answers reinsert the word at a random later position. The session ends only when every word has been answered correctly at least once.
+4. **Results screen** — shows total elapsed time, accuracy rate (correct attempts / total attempts), and a ranked table of words the user missed most often, sorted descending by incorrect attempt count.
 
 No backend. No authentication. No localStorage. All state is ephemeral React state that resets on page reload.
 
@@ -19,16 +20,10 @@ No backend. No authentication. No localStorage. All state is ephemeral React sta
 ### File location
 
 ```
-src/data/words.json
+public/words.json
 ```
 
-<!-- NOTE: words.json is actually 524KB. This is too large to bundle into the JS chunk.
-Move it to public/words.json and fetch it at app startup instead.
-Update the data layer section and all references to static import accordingly.
-Add a loading state to the app (before the setup screen appears).
-Remove any mention of "moving to public/ as a future concern" — this is the decision now. -->
-
-Words are imported statically through Vite's JSON module support. No runtime fetch needed.
+`words.json` is 524KB and must not be bundled into the JS chunk. It lives in `public/` so Vite copies it verbatim to `dist/words.json`, and the app fetches it at startup. No static JSON import anywhere in the source.
 
 ### TypeScript types
 
@@ -65,16 +60,42 @@ export interface SessionResult {
 }
 ```
 
+### Data-loading hook
+
+```typescript
+// src/hooks/useWords.ts
+
+export interface WordsState {
+  words: Word[] | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export function useWords(): WordsState {
+  const [state, setState] = useState<WordsState>({ words: null, loading: true, error: null });
+
+  useEffect(() => {
+    fetch('/words.json')
+      .then(res => {
+        if (!res.ok) throw new Error(`Failed to load words (${res.status})`);
+        return res.json() as Promise<Word[]>;
+      })
+      .then(words => setState({ words, loading: false, error: null }))
+      .catch(err => setState({ words: null, loading: false, error: String(err.message) }));
+  }, []);
+
+  return state;
+}
+```
+
 ### Utility functions
 
 ```typescript
 // src/utils/words.ts
-import wordsData from '../data/words.json';
+// No JSON import — words are passed in from the loaded dataset.
 
-const ALL_WORDS: Word[] = wordsData as Word[];
-
-export function getWordsInRange(start: number, end: number): Word[] {
-  return ALL_WORDS.filter(w => w.id >= start && w.id <= end);
+export function getWordsInRange(allWords: Word[], start: number, end: number): Word[] {
+  return allWords.filter(w => w.id >= start && w.id <= end);
 }
 
 export function shuffleArray<T>(arr: T[]): T[] {
@@ -86,8 +107,6 @@ export function shuffleArray<T>(arr: T[]): T[] {
   return out;
 }
 ```
-
-The `tsconfig.json` must include `"resolveJsonModule": true` (default in Vite templates).
 
 ---
 
@@ -111,7 +130,7 @@ interface SessionState {
 ### Session lifecycle
 
 **Initialization** (called when user presses Start):
-1. `allWords = getWordsInRange(config.start, config.end)`
+1. `allWords = getWordsInRange(words, config.start, config.end)` (words from the loaded dataset)
 2. `queue = shuffleArray(allWords)`
 3. `incorrectCounts = new Map()` — all values start at 0 implicitly
 4. `completedIds = new Set()`
@@ -147,7 +166,7 @@ const result: SessionResult = {
 ### Hook API
 
 ```typescript
-function useSession(config: SessionConfig): {
+function useSession(words: Word[], config: SessionConfig): {
   currentWord: Word | null;
   queueLength: number;
   completedCount: number;
@@ -169,9 +188,11 @@ All components live under `src/components/`. Screen-level components live under 
 
 | Component | File | Description |
 |---|---|---|
+| `LoadingScreen` | `screens/LoadingScreen.tsx` | Minimal spinner shown while `words.json` is fetching |
+| `ErrorScreen` | `screens/ErrorScreen.tsx` | Displayed if the words fetch fails; shows message + retry button |
 | `SetupScreen` | `screens/SetupScreen.tsx` | Range inputs, mode selector, start button |
-| `PracticeScreen` | `screens/PracticeScreen.tsx` | Orchestrates practice session; owns `useSession` |
-| `ResultsScreen` | `screens/ResultsScreen.tsx` | Displays elapsed time, accuracy, missed-words table |
+| `PracticeScreen` | `screens/PracticeScreen.tsx` | Orchestrates practice session; owns `useSession`; reads `config` from React Router location state |
+| `ResultsScreen` | `screens/ResultsScreen.tsx` | Displays elapsed time, accuracy, missed-words table; reads `result` from React Router location state |
 
 ### Components
 
@@ -193,39 +214,75 @@ All components live under `src/components/`. Screen-level components live under 
 
 ```typescript
 // src/App.tsx
-type View = 'setup' | 'practice' | 'results';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useWords } from './hooks/useWords';
 
 export default function App() {
-  const [view, setView] = useState<View>('setup');
-  const [sessionConfig, setSessionConfig] = useState<SessionConfig | null>(null);
-  const [sessionResult, setSessionResult] = useState<SessionResult | null>(null);
+  const { words, loading, error } = useWords();
 
-  // callbacks passed down:
-  // onStart(config) → setSessionConfig + setView('practice')
-  // onComplete(result) → setSessionResult + setView('results')
-  // onReset() → clear both + setView('setup')
+  if (loading) return <LoadingScreen />;
+  if (error) return <ErrorScreen message={error} />;
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<SetupScreen words={words!} />} />
+        <Route path="/practice" element={<PracticeScreen words={words!} />} />
+        <Route path="/results" element={<ResultsScreen />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 ```
+
+Session data (config, result) travels via React Router location state — no global state manager needed.
 
 ---
 
 ## 5. Routing
 
-<!-- NOTE: Reconsider this. A router adds real value here:
-- /practice and /results should be bookmarkable states (even if ephemeral session data resets, the URL tells the user where they are)
-- Browser back button should work intuitively (back from results → setup, not a broken experience)
-- It's more correct architecture for a deployed SPA on a custom domain
-Please revise this section to use React Router v6. Update component architecture and todo list accordingly.
-Keep the public/_redirects SPA rule. -->
+**Decision: React Router v6 (`react-router-dom`).**
 
-**Decision: No external router. Pure React state.**
+### Routes
 
-**Reasoning:**
-The app has exactly three views in a strict, non-branching pipeline: setup → practice → results → setup. There are no shareable URLs (a practice session can't be deep-linked; it requires ephemeral runtime state). There is no browser back-button semantics to honor (going "back" during practice would mean abandoning the session, which should be an explicit action, not a browser affordance). Adding React Router for three sequential views adds boilerplate (`BrowserRouter`, `Route`, `Navigate`, `useNavigate`) with zero user-facing benefit.
+| Path | Component | Notes |
+|---|---|---|
+| `/` | `SetupScreen` | Always reachable; shown after fetch completes |
+| `/practice` | `PracticeScreen` | Expects `{ config: SessionConfig }` in location state |
+| `/results` | `ResultsScreen` | Expects `{ result: SessionResult }` in location state |
+| `*` | `<Navigate to="/" replace />` | Catch-all redirect |
 
-A top-level `View` state enum in `App.tsx` is sufficient, unambiguous, and eliminates an entire dependency.
+### Navigation flow
 
-The `public/_redirects` file still needs the SPA catch-all rule for Cloudflare Pages (in case someone lands on a non-root URL edge case), but routing logic itself is pure state.
+- **SetupScreen → practice**: `navigate('/practice', { state: { config } })`
+- **PracticeScreen → results**: `navigate('/results', { state: { result }, replace: true })` — `replace: true` so the back button skips the completed practice session and goes straight to setup
+- **ResultsScreen → new session**: `navigate('/')` on "New Session"
+- **ResultsScreen → retry**: `navigate('/practice', { state: { config: result.config } })` on "Try Again"
+
+### Guard behavior
+
+If a user lands on `/practice` or `/results` without valid location state (e.g., page refresh), the component redirects to setup:
+
+```typescript
+// PracticeScreen
+const { state } = useLocation();
+const config = state?.config as SessionConfig | undefined;
+if (!config) return <Navigate to="/" replace />;
+
+// ResultsScreen
+const { state } = useLocation();
+const result = state?.result as SessionResult | undefined;
+if (!result) return <Navigate to="/" replace />;
+```
+
+### Why React Router v6?
+
+The URL reflects where the user is in the flow (`/practice` vs `/results` vs `/`). The browser back button works intuitively: back from results returns to setup. Page reload on any path bounces to setup gracefully rather than rendering a broken state. The cost is one dependency and a `<BrowserRouter>` wrapper — the architecture remains simple.
+
+Session state is intentionally not encoded in URLs. A practice session cannot be deep-linked (it requires ephemeral runtime state), and attempting to serialize it would add complexity with no real benefit. Refreshing mid-session returns to setup, which is correct.
+
+The `public/_redirects` SPA catch-all rule is still required for Cloudflare Pages to return `index.html` for all non-asset paths.
 
 ---
 
@@ -253,60 +310,80 @@ The `public/_redirects` file still needs the SPA catch-all rule for Cloudflare P
 
 ### EN→EN mode (`EnEnPrompt`)
 
-<!-- NOTE: The current exact-match regex approach is too brittle.
-Example sentences often contain conjugated or inflected forms of the target word
-(e.g. target: "create", sentence contains "creating" or "created").
-The exact \b{word}\b regex will fail to find these, triggering the fallback too often.
+**Word hiding logic — token-based fuzzy matching:**
 
-Instead, use a token-based fuzzy approach:
-- Split the sentence into tokens (words/punctuation)
-- Find the token that has the highest overlap with the target word
-  (e.g. starts with the same stem, or one is a prefix of the other)
-- Remove that entire token from the rendering — don't try to reconstruct it, just blank it
-- This handles plurals, -ing, -ed, -er forms naturally without a full morphology library
-
-Update parseSentence (or rename/replace it) to implement this smarter approach.
-Show the revised algorithm with a code snippet. -->
-
-**Word hiding logic:**
+Example sentences often contain inflected forms of the target word (`create` → `creating`, `acquired`, `obscures`). An exact `\bword\b` regex fails for these, producing too many fallbacks. Instead, `parseSentence` uses a token-based approach: it finds the sentence token most similar to the target word by prefix overlap, then blanks that token regardless of its exact form.
 
 ```typescript
 // src/utils/sentence.ts
 
 export interface ParsedSentence {
-  before: string;
-  after: string;
-  found: boolean;  // false if target word not found in sentence
+  before: string;        // text before the blanked token
+  blankedToken: string;  // the actual sentence token that was removed (used for blank width)
+  after: string;         // text after the blanked token
+  found: boolean;        // false if no sufficiently similar token was found
 }
 
 export function parseSentence(sentence: string, word: string): ParsedSentence {
-  // Case-insensitive match for whole word (may be conjugated form)
-  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`\\b${escaped}\\b`, 'i');
-  const match = sentence.match(regex);
+  // Split into alternating [gap, word-token, gap, word-token, ...] pairs.
+  // Odd-indexed entries are word tokens; even-indexed are gaps/punctuation.
+  const tokens = sentence.split(/(\b\w+\b)/);
+  const targetLower = word.toLowerCase();
 
-  if (!match || match.index === undefined) {
-    return { before: sentence, after: '', found: false };
+  let bestIndex = -1;
+  let bestScore = 0;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (!/^\w+$/.test(token)) continue; // skip gaps
+
+    const tokenLower = token.toLowerCase();
+
+    // Exact match: take it immediately
+    if (tokenLower === targetLower) {
+      bestIndex = i;
+      bestScore = 1;
+      break;
+    }
+
+    // Prefix overlap: one string starts with the other (handles -ing, -ed, -s, -er, -ly forms)
+    const shorter = tokenLower.length <= targetLower.length ? tokenLower : targetLower;
+    const longer  = tokenLower.length <= targetLower.length ? targetLower : tokenLower;
+
+    if (longer.startsWith(shorter)) {
+      const score = shorter.length / longer.length;
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = i;
+      }
+    }
   }
 
-  return {
-    before: sentence.slice(0, match.index),
-    after: sentence.slice(match.index + match[0].length),
-    found: true,
-  };
+  // Require at least 50% overlap to avoid false positives on short common words
+  if (bestIndex === -1 || bestScore < 0.5) {
+    return { before: sentence, blankedToken: word, after: '', found: false };
+  }
+
+  const blankedToken = tokens[bestIndex];
+  const before = tokens.slice(0, bestIndex).join('');
+  const after  = tokens.slice(bestIndex + 1).join('');
+
+  return { before, blankedToken, after, found: true };
 }
 ```
 
+**Coverage:** handles plurals (`-s`), progressive (`-ing`), past (`-ed`), comparative (`-er`), nominal (`-tion`, `-ness`) as long as the base word is a prefix of the inflected form. Irregular forms (`go` → `went`) fall through to the `found: false` fallback.
+
 **Visual blank rendering:**
 
-The blank is rendered as an inline element, not raw underscores. It uses a border-bottom to create a fill-in-blank feel proportional to the word length:
+The blank is rendered as an inline element proportional to the matched token's length, not the base word's length:
 
 ```tsx
 // Inside EnEnPrompt
-const { before, after, found } = parseSentence(word.example_sentence, word.word);
+const { before, blankedToken, after, found } = parseSentence(word.example_sentence, word.word);
 
-// Blank width: 1ch per character of the target word, min 4ch, max 12ch
-const blankWidth = `${Math.min(Math.max(word.word.length, 4), 12)}ch`;
+// Blank width: 1ch per character of the blanked token, min 4ch, max 12ch
+const blankWidth = `${Math.min(Math.max(blankedToken.length, 4), 12)}ch`;
 
 <p className="text-xl leading-relaxed text-gray-800">
   {before}
@@ -319,15 +396,12 @@ const blankWidth = `${Math.min(Math.max(word.word.length, 4), 12)}ch`;
 </p>
 ```
 
-If `found === false` (word does not appear verbatim in the sentence, e.g. due to conjugation), render a fallback:
+If `found === false` (no sufficiently similar token found), render a fallback:
 
 ```tsx
-// Fallback: show sentence normally with a separate fill-in indicator
 <p className="text-sm text-amber-600 mb-2">Fill in the blank: the answer appears in a different form.</p>
 <p className="text-xl leading-relaxed text-gray-800">{word.example_sentence}</p>
 ```
-
-This is honest to the user — rather than silently hiding nothing, it signals that the form will differ.
 
 ### Answer input behavior
 
@@ -349,7 +423,7 @@ No full-screen animation. A simple opacity fade (`transition-opacity duration-20
 
 ### Data received
 
-`ResultsScreen` receives a `SessionResult` object (defined in §2) as a prop. It does not need access to the session hook — all data is pre-computed.
+`ResultsScreen` reads a `SessionResult` object from React Router location state (`useLocation().state?.result`). If it is absent (e.g., page refresh), the component redirects to `/`. It does not need access to the session hook — all data is pre-computed.
 
 ### Computed display values
 
@@ -404,7 +478,7 @@ Rank is 1-indexed by sort order (ties share the same rank, next rank skips — s
 └─────────────────────────────────────────────────────┘
 ```
 
-"Try Again with same range" resets the session with the same `SessionConfig`. "New Session" returns to the setup screen.
+"Try Again with same range" navigates to `/practice` with the same `SessionConfig` in location state. "New Session" navigates to `/`.
 
 ---
 
@@ -498,9 +572,10 @@ Node version:     20
 ```typescript
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   build: {
     outDir: 'dist',
   },
@@ -509,20 +584,20 @@ export default defineConfig({
 
 ### SPA redirect rule
 
-All non-asset requests must return `index.html` (required even without a router, in case users land on a URL with a hash or future paths):
+All non-asset requests must return `index.html` so React Router can handle client-side routing:
 
 ```
 # public/_redirects
 /*  /index.html  200
 ```
 
-This file is copied verbatim to `dist/` by Vite (anything in `public/` is copied as-is).
+This file is copied verbatim to `dist/` by Vite (anything in `public/` is copied as-is), alongside `dist/words.json`.
 
 ### Gotchas
 
-- **Tailwind v4 peer dep**: Ensure `@tailwindcss/vite` plugin is used (Tailwind v4's Vite integration is `@tailwindcss/vite`, not the PostCSS plugin).
-- **words.json bundle size**: 1,900 words at ~200 bytes each ≈ 380KB raw JSON. Vite will bundle this into the JS chunk. This is acceptable; no code-splitting needed. If it becomes a concern, it could be moved to `public/words.json` and fetched at startup — but for now, static import is simpler.
-- **`resolveJsonModule`**: Vite handles JSON imports natively; no extra tsconfig flag needed beyond `"moduleResolution": "bundler"`.
+- **Tailwind v4 peer dep**: Use `@tailwindcss/vite` as the Vite plugin (not the PostCSS plugin). Import it in `vite.config.ts` and add `@import "tailwindcss"` in CSS — no `tailwind.config.js`.
+- **`words.json` must be in `public/`**: Vite will copy `public/words.json` → `dist/words.json` automatically. Verify `dist/words.json` exists after build before deploying.
+- **`words.json` fetch on Cloudflare**: The `_redirects` catch-all only applies to HTML requests. Static assets (`/words.json`) are served directly by Pages and are not affected by the `/*  /index.html  200` rule.
 - **Custom domain**: Set `webtarget.dev` as the custom domain in the Cloudflare Pages project settings and add the DNS CNAME record.
 
 ---
@@ -533,64 +608,73 @@ This file is copied verbatim to `dist/` by Vite (anything in `public/` is copied
 
 - [ ] `npm create vite@latest . -- --template react-ts` (or equivalent)
 - [ ] Install Tailwind CSS v4: `npm install tailwindcss @tailwindcss/vite`
-- [ ] Configure `@tailwindcss/vite` in `vite.config.ts`
+- [ ] Install React Router v6: `npm install react-router-dom`
+- [ ] Configure `@tailwindcss/vite` plugin in `vite.config.ts`
 - [ ] Add `@import "tailwindcss"` and `@theme` block to `src/index.css`
 - [ ] Delete Vite boilerplate (default `App.tsx`, `App.css`, `assets/`)
-- [ ] Create directory structure: `src/components/`, `src/screens/`, `src/hooks/`, `src/utils/`, `src/data/`, `src/types.ts`
+- [ ] Create directory structure: `src/components/`, `src/screens/`, `src/hooks/`, `src/utils/`, `src/types.ts`
 - [ ] Add `public/_redirects` with SPA rule
 - [ ] Verify `npm run build` produces a clean `dist/`
 
 ### Phase 2 — Data layer
 
-- [ ] Copy `words.json` to `src/data/words.json`
+- [ ] Move `words.json` to `public/words.json` (not `src/data/`)
 - [ ] Write `src/types.ts` with all interfaces (`Word`, `PracticeMode`, `SessionConfig`, `CompletedResult`, `SessionResult`)
-- [ ] Write `src/utils/words.ts` (`getWordsInRange`, `shuffleArray`)
-- [ ] Write `src/utils/sentence.ts` (`parseSentence` for EN→EN blank detection)
-- [ ] Manually verify `parseSentence` handles: word found, word not found, word mid-sentence, word at start, word at end
+- [ ] Write `src/hooks/useWords.ts` (fetch `/words.json`, return `{ words, loading, error }`)
+- [ ] Write `src/utils/words.ts` (`getWordsInRange(allWords, start, end)`, `shuffleArray`) — no JSON import
+- [ ] Write `src/utils/sentence.ts` (`parseSentence` with token-based fuzzy matching)
+- [ ] Manually verify `parseSentence` handles: exact match, `-ing` form, `-ed` form, word not found, word at start of sentence, word at end of sentence
+- [ ] Verify `dist/words.json` exists after `npm run build`
 
 ### Phase 3 — Session logic
 
-- [ ] Write `src/hooks/useSession.ts` with state shape and all actions
+- [ ] Write `src/hooks/useSession.ts` with state shape and all actions; signature: `useSession(words: Word[], config: SessionConfig)`
 - [ ] Implement `submitAnswer` with correct/incorrect branching
 - [ ] Implement re-queue logic (random position, min index 1)
 - [ ] Implement completion detection and `SessionResult` construction
 - [ ] Verify edge case: single word in range (must loop until correct)
 - [ ] Verify edge case: range produces 0 words (should be blocked at setup validation)
 
-### Phase 4 — Setup screen
+### Phase 4 — App shell + loading
 
-- [ ] `SetupScreen.tsx` layout (range inputs + mode selector + start button)
+- [ ] `App.tsx`: `useWords()` hook, loading/error guards, `<BrowserRouter>` + `<Routes>` with all four routes
+- [ ] `LoadingScreen.tsx`: minimal centered spinner with `webtarget.dev` header
+- [ ] `ErrorScreen.tsx`: shows error message + retry button (reloads page)
+
+### Phase 5 — Setup screen
+
+- [ ] `SetupScreen.tsx` layout (range inputs + mode selector + start button); receives `words` prop
 - [ ] `RangeInput.tsx`: two number inputs, validate `1 ≤ start ≤ end ≤ 1900`, error messages inline
 - [ ] `ModeSelector.tsx`: two option cards (JP→EN, EN→EN) with descriptions; selected state is visually distinct (blue border + bg tint)
 - [ ] Disable Start button when validation fails
-- [ ] Wire `onStart(config)` callback up to `App.tsx`
+- [ ] On Start: `navigate('/practice', { state: { config } })`
 - [ ] Apply Google Translate-inspired styles
 
-### Phase 5 — Practice screen
+### Phase 6 — Practice screen
 
-- [ ] `PracticeScreen.tsx`: owns `useSession`, renders current word, handles feedback timing
+- [ ] `PracticeScreen.tsx`: reads `config` from `useLocation().state`; redirects to `/` if absent; owns `useSession(words, config)`, handles feedback timing
 - [ ] `WordPrompt.tsx`: delegates to `JpEnPrompt` or `EnEnPrompt` based on mode
 - [ ] `JpEnPrompt.tsx`: part-of-speech chip, Japanese meaning, pronunciation
-- [ ] `EnEnPrompt.tsx`: sentence with styled blank; fallback for unmatched word
+- [ ] `EnEnPrompt.tsx`: sentence with styled blank using `parseSentence`; fallback for unmatched word
 - [ ] `AnswerInput.tsx`: text input, submit button, Enter key, auto-focus, disabled-when-empty
 - [ ] `FeedbackBanner.tsx`: correct (green, "Correct!") / incorrect (red, "The answer was: {word}") state
 - [ ] `ProgressBar.tsx`: full-width strip at top, animated fill
 - [ ] `SessionStats.tsx`: live elapsed timer (updates every second via `setInterval`) + word counter
 - [ ] Opacity fade transition between words
-- [ ] Wire `onComplete(result)` callback up to `App.tsx`
+- [ ] On complete: `navigate('/results', { state: { result }, replace: true })`
 
-### Phase 6 — Results screen
+### Phase 7 — Results screen
 
-- [ ] `ResultsScreen.tsx`: layout with three stat cards + table + action buttons
+- [ ] `ResultsScreen.tsx`: reads `result` from `useLocation().state`; redirects to `/` if absent
 - [ ] `StatCard.tsx`: reusable card (label + large value)
 - [ ] Format elapsed time as `M:SS`
 - [ ] Compute and display accuracy percentage
 - [ ] `MissedWordsTable.tsx`: sorted missed words with rank, word, Japanese meaning, missed count
 - [ ] Handle "perfect score" case (no missed words)
-- [ ] "Try Again" button: call `onStart` with same config (triggers new session)
-- [ ] "New Session" button: call `onReset` to return to setup
+- [ ] "Try Again" button: `navigate('/practice', { state: { config: result.config } })`
+- [ ] "New Session" button: `navigate('/')`
 
-### Phase 7 — Design polish
+### Phase 8 — Design polish
 
 - [ ] Audit all screens against Google Translate aesthetic reference
 - [ ] Verify text color hierarchy (gray-900 / gray-600 / gray-400) is consistent
@@ -601,7 +685,7 @@ This file is copied verbatim to `dist/` by Vite (anything in `public/` is copied
 - [ ] Check feedback banners auto-dismiss correctly
 - [ ] Review EN→EN blank sizing across different word lengths
 
-### Phase 8 — Quality and correctness
+### Phase 9 — Quality and correctness
 
 - [ ] Test JP→EN mode end-to-end with a small range (e.g. IDs 1–5)
 - [ ] Test EN→EN mode end-to-end with same range
@@ -612,16 +696,22 @@ This file is copied verbatim to `dist/` by Vite (anything in `public/` is copied
 - [ ] Verify results accuracy math is correct
 - [ ] Test range validation edge cases (start > end, values out of 1–1900)
 - [ ] Test with full range (1–1900) to ensure no performance issues
+- [ ] Test `parseSentence` with conjugated forms from actual `words.json` entries (spot-check 10+ words)
+- [ ] Test browser back button from results screen (should return to setup, skipping practice)
+- [ ] Test page refresh on `/practice` (should redirect to `/`)
+- [ ] Test page refresh on `/results` (should redirect to `/`)
 
-### Phase 9 — Deploy
+### Phase 10 — Deploy
 
 - [ ] `npm run build` — verify `dist/` is clean, no errors
 - [ ] Check `dist/_redirects` exists
+- [ ] Check `dist/words.json` exists and is ~524KB
 - [ ] Create Cloudflare Pages project linked to repo
 - [ ] Set build command (`npm run build`) and output directory (`dist`) in Pages settings
 - [ ] Set Node.js version to 20 in Pages environment variables
 - [ ] Add `webtarget.dev` custom domain in Pages settings
 - [ ] Configure DNS: add CNAME `webtarget.dev → <project>.pages.dev` in Cloudflare DNS
 - [ ] Trigger deploy and verify production URL loads correctly
-- [ ] Verify SPA `_redirects` rule: navigate to any path and confirm it loads `index.html`
+- [ ] Verify `words.json` loads from CDN (check Network tab; should be a separate request, not bundled)
+- [ ] Verify SPA `_redirects` rule: navigate to `/practice` directly and confirm it loads `index.html`
 - [ ] Smoke test both practice modes on production
