@@ -19,7 +19,7 @@ export default function PracticeScreen({ words }: Props) {
 
 type CardState =
   | { phase: 'idle' }
-  | { phase: 'feedback'; userInput: string; correctAnswer: string; isCorrect: boolean };
+  | { phase: 'feedback'; word: Word; userInput: string; isCorrect: boolean };
 
 function PracticeSession({ words, config }: { words: Word[]; config: SessionConfig }) {
   const navigate = useNavigate();
@@ -34,15 +34,25 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
     if (result) navigate('/results', { state: { result }, replace: true });
   }, [result, navigate]);
 
+  // Enter key advances from feedback → idle. useEffect fires after paint (async),
+  // so the original submit-Enter's full keydown→keyup cycle is done before this listener
+  // is ever added — no accidental advance from the submit action.
+  useEffect(() => {
+    if (card.phase !== 'feedback') return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || e.repeat) return;
+      if (e.target instanceof HTMLInputElement) return;
+      handleNext();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card]);
+
   function handleSubmit() {
     if (!currentWord || input.trim() === '') return;
     const outcome = evaluateAnswer(input);
-    setCard({
-      phase: 'feedback',
-      userInput: input,
-      correctAnswer: currentWord.word,
-      isCorrect: outcome === 'correct',
-    });
+    setCard({ phase: 'feedback', word: currentWord, userInput: input, isCorrect: outcome === 'correct' });
   }
 
   function handleNext() {
@@ -78,11 +88,11 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
               <div className="flex-1 border-r border-gray-200 bg-white">
                 <WordPrompt word={currentWord} mode={config.mode} />
               </div>
-              <div className="w-80 flex-shrink-0 bg-surface-gray p-6 flex flex-col gap-4">
+              <div className="w-80 flex-shrink-0 bg-surface-gray p-6 flex flex-col">
                 {card.phase === 'feedback' ? (
                   <ReviewPanel
+                    word={card.word}
                     userInput={card.userInput}
-                    correctAnswer={card.correctAnswer}
                     isCorrect={card.isCorrect}
                     onNext={handleNext}
                   />
@@ -99,42 +109,48 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
 }
 
 interface ReviewPanelProps {
+  word: Word;
   userInput: string;
-  correctAnswer: string;
   isCorrect: boolean;
   onNext: () => void;
 }
 
-function ReviewPanel({ userInput, correctAnswer, isCorrect, onNext }: ReviewPanelProps) {
+function ReviewPanel({ word, userInput, isCorrect, onNext }: ReviewPanelProps) {
   return (
-    <div className="flex flex-col gap-4 h-full">
-      <div className={`flex items-center gap-2 ${isCorrect ? 'text-green-600' : 'text-red-500'}`}>
-        <span className="text-base">{isCorrect ? '✅' : '❌'}</span>
-        <span className="text-sm font-medium">{isCorrect ? 'Correct!' : 'Incorrect'}</span>
-      </div>
+    <div className="flex flex-col h-full">
 
-      <div>
-        <p className="text-xs text-gray-400 mb-1.5">Your answer</p>
-        <p className={`text-sm font-mono px-3 py-2 rounded-lg border ${
-          isCorrect
-            ? 'bg-green-50 border-green-200 text-green-800'
-            : 'bg-red-50 border-red-200 text-red-700 line-through'
-        }`}>
-          {userInput}
+      {/* Status label */}
+      <p className={`text-[11px] font-semibold uppercase tracking-widest mb-5 ${
+        isCorrect ? 'text-green-600' : 'text-red-500'
+      }`}>
+        {isCorrect ? '✓  Correct' : '✗  Incorrect'}
+      </p>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Wrong answer — struck through, only on incorrect */}
+        {!isCorrect && (
+          <p className="text-sm font-mono text-red-400 line-through mb-3 opacity-80">
+            {userInput}
+          </p>
+        )}
+
+        {/* Word — large, light weight, Google Translate result style */}
+        <p className="text-4xl font-light text-gray-800 leading-none tracking-tight">
+          {word.word}
         </p>
+
+        {word.pronunciation && (
+          <p className="text-sm text-gray-400 mt-3">{word.pronunciation}</p>
+        )}
+        <p className="text-xs text-gray-400 italic mt-1">{word.part_of_speech}</p>
       </div>
 
-      <div>
-        <p className="text-xs text-gray-400 mb-1.5">The answer is</p>
-        <p className="text-sm font-mono px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-900 font-semibold">
-          {correctAnswer}
-        </p>
-      </div>
-
+      {/* Next button */}
       <button
         type="button"
         onClick={onNext}
-        className="w-full mt-auto bg-blue-google text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-blue-google-hover transition-colors duration-150 cursor-pointer"
+        className="w-full bg-blue-google text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-blue-google-hover transition-colors duration-150 cursor-pointer"
       >
         Next →
       </button>
