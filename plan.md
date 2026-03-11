@@ -606,106 +606,106 @@ This file is copied verbatim to `dist/` by Vite (anything in `public/` is copied
 
 ### Phase 1 — Project scaffold
 
-- [ ] `npm create vite@latest . -- --template react-ts` (or equivalent)
-- [ ] Install Tailwind CSS v4: `npm install tailwindcss @tailwindcss/vite`
-- [ ] Install React Router v6: `npm install react-router-dom`
-- [ ] Configure `@tailwindcss/vite` plugin in `vite.config.ts`
-- [ ] Add `@import "tailwindcss"` and `@theme` block to `src/index.css`
-- [ ] Delete Vite boilerplate (default `App.tsx`, `App.css`, `assets/`)
-- [ ] Create directory structure: `src/components/`, `src/screens/`, `src/hooks/`, `src/utils/`, `src/types.ts`
-- [ ] Add `public/_redirects` with SPA rule
-- [ ] Verify `npm run build` produces a clean `dist/`
+- [x] `npm create vite@latest . -- --template react-ts` (or equivalent)
+- [x] Install Tailwind CSS v4: `npm install tailwindcss @tailwindcss/vite`
+- [x] Install React Router v6: `npm install react-router-dom`
+- [x] Configure `@tailwindcss/vite` plugin in `vite.config.ts`
+- [x] Add `@import "tailwindcss"` and `@theme` block to `src/index.css`
+- [x] Delete Vite boilerplate (default `App.tsx`, `App.css`, `assets/`)
+- [x] Create directory structure: `src/components/`, `src/screens/`, `src/hooks/`, `src/utils/`, `src/types.ts`
+- [x] Add `public/_redirects` with SPA rule
+- [x] Verify `npm run build` produces a clean `dist/`
 
 ### Phase 2 — Data layer
 
-- [ ] Move `words.json` to `public/words.json` (not `src/data/`)
-- [ ] Write `src/types.ts` with all interfaces (`Word`, `PracticeMode`, `SessionConfig`, `CompletedResult`, `SessionResult`)
-- [ ] Write `src/hooks/useWords.ts` (fetch `/words.json`, return `{ words, loading, error }`)
-- [ ] Write `src/utils/words.ts` (`getWordsInRange(allWords, start, end)`, `shuffleArray`) — no JSON import
-- [ ] Write `src/utils/sentence.ts` (`parseSentence` with token-based fuzzy matching)
-- [ ] Manually verify `parseSentence` handles: exact match, `-ing` form, `-ed` form, word not found, word at start of sentence, word at end of sentence
-- [ ] Verify `dist/words.json` exists after `npm run build`
+- [x] Move `words.json` to `public/words.json` (not `src/data/`)
+- [x] Write `src/types.ts` with all interfaces (`Word`, `PracticeMode`, `SessionConfig`, `CompletedResult`, `SessionResult`)
+- [x] Write `src/hooks/useWords.ts` (fetch `/words.json`, return `{ words, loading, error }`)
+- [x] Write `src/utils/words.ts` (`getWordsInRange(allWords, start, end)`, `shuffleArray`) — no JSON import
+- [x] Write `src/utils/sentence.ts` (`parseSentence` with token-based fuzzy matching)
+- [x] Manually verify `parseSentence` handles: exact match, `-ing` form, `-ed` form, word not found, word at start of sentence, word at end of sentence
+- [x] Verify `dist/words.json` exists after `npm run build`
 
 ### Phase 3 — Session logic
 
-- [ ] Write `src/hooks/useSession.ts` with state shape and all actions; signature: `useSession(words: Word[], config: SessionConfig)`
-- [ ] Implement `submitAnswer` with correct/incorrect branching
-- [ ] Implement re-queue logic (random position, min index 1)
-- [ ] Implement completion detection and `SessionResult` construction
-- [ ] Verify edge case: single word in range (must loop until correct)
-- [ ] Verify edge case: range produces 0 words (should be blocked at setup validation)
+- [x] Write `src/hooks/useSession.ts` with state shape and all actions; signature: `useSession(words: Word[], config: SessionConfig)`
+- [x] Implement `submitAnswer` with correct/incorrect branching
+- [x] Implement re-queue logic (random position, min index 1)
+- [x] Implement completion detection and `SessionResult` construction
+- [x] Verify edge case: single word in range (must loop until correct)
+- [x] Verify edge case: range produces 0 words (should be blocked at setup validation)
 
 ### Phase 4 — App shell + loading
 
-- [ ] `App.tsx`: `useWords()` hook, loading/error guards, `<BrowserRouter>` + `<Routes>` with all four routes
-- [ ] `LoadingScreen.tsx`: minimal centered spinner with `webtarget.dev` header
-- [ ] `ErrorScreen.tsx`: shows error message + retry button (reloads page)
+- [x] `App.tsx`: `useWords()` hook, loading/error guards, `<BrowserRouter>` + `<Routes>` with all four routes
+- [x] `LoadingScreen.tsx`: minimal centered spinner with `webtarget.dev` header
+- [x] `ErrorScreen.tsx`: shows error message + retry button (reloads page)
 
 ### Phase 5 — Setup screen
 
-- [ ] `SetupScreen.tsx` layout (range inputs + mode selector + start button); receives `words` prop
-- [ ] `RangeInput.tsx`: two number inputs, validate `1 ≤ start ≤ end ≤ 1900`, error messages inline
-- [ ] `ModeSelector.tsx`: two option cards (JP→EN, EN→EN) with descriptions; selected state is visually distinct (blue border + bg tint)
-- [ ] Disable Start button when validation fails
-- [ ] On Start: `navigate('/practice', { state: { config } })`
-- [ ] Apply Google Translate-inspired styles
+- [x] `SetupScreen.tsx` layout (range inputs + mode selector + start button); receives `words` prop
+- [x] `RangeInput.tsx`: two number inputs, validate `1 ≤ start ≤ end ≤ 1900`, error messages inline
+- [x] `ModeSelector.tsx`: two option cards (JP→EN, EN→EN) with descriptions; selected state is visually distinct (blue border + bg tint)
+- [x] Disable Start button when validation fails
+- [x] On Start: `navigate('/practice', { state: { config } })`
+- [x] Apply Google Translate-inspired styles
 
 ### Phase 6 — Practice screen
 
-- [ ] `PracticeScreen.tsx`: reads `config` from `useLocation().state`; redirects to `/` if absent; owns `useSession(words, config)`, handles feedback timing
-- [ ] `WordPrompt.tsx`: delegates to `JpEnPrompt` or `EnEnPrompt` based on mode
-- [ ] `JpEnPrompt.tsx`: part-of-speech chip, Japanese meaning, pronunciation
-- [ ] `EnEnPrompt.tsx`: sentence with styled blank using `parseSentence`; fallback for unmatched word
-- [ ] `AnswerInput.tsx`: text input, submit button, Enter key, auto-focus, disabled-when-empty
-- [ ] `FeedbackBanner.tsx`: correct (green, "Correct!") / incorrect (red, "The answer was: {word}") state
-- [ ] `ProgressBar.tsx`: full-width strip at top, animated fill
-- [ ] `SessionStats.tsx`: live elapsed timer (updates every second via `setInterval`) + word counter
-- [ ] Opacity fade transition between words
-- [ ] On complete: `navigate('/results', { state: { result }, replace: true })`
+- [x] `PracticeScreen.tsx`: reads `config` from `useLocation().state`; redirects to `/` if absent; owns `useSession(words, config)`, handles feedback timing
+- [x] `WordPrompt.tsx`: delegates to `JpEnPrompt` or `EnEnPrompt` based on mode
+- [x] `JpEnPrompt.tsx`: part-of-speech chip, Japanese meaning, pronunciation
+- [x] `EnEnPrompt.tsx`: sentence with styled blank using `parseSentence`; fallback for unmatched word
+- [x] `AnswerInput.tsx`: text input, submit button, Enter key, auto-focus, disabled-when-empty
+- [x] `FeedbackBanner.tsx`: correct (green, "Correct!") / incorrect (red, "The answer was: {word}") state
+- [x] `ProgressBar.tsx`: full-width strip at top, animated fill
+- [x] `SessionStats.tsx`: live elapsed timer (updates every second via `setInterval`) + word counter
+- [x] Opacity fade transition between words
+- [x] On complete: `navigate('/results', { state: { result }, replace: true })`
 
 ### Phase 7 — Results screen
 
-- [ ] `ResultsScreen.tsx`: reads `result` from `useLocation().state`; redirects to `/` if absent
-- [ ] `StatCard.tsx`: reusable card (label + large value)
-- [ ] Format elapsed time as `M:SS`
-- [ ] Compute and display accuracy percentage
-- [ ] `MissedWordsTable.tsx`: sorted missed words with rank, word, Japanese meaning, missed count
-- [ ] Handle "perfect score" case (no missed words)
-- [ ] "Try Again" button: `navigate('/practice', { state: { config: result.config } })`
-- [ ] "New Session" button: `navigate('/')`
+- [x] `ResultsScreen.tsx`: reads `result` from `useLocation().state`; redirects to `/` if absent
+- [x] `StatCard.tsx`: reusable card (label + large value)
+- [x] Format elapsed time as `M:SS`
+- [x] Compute and display accuracy percentage
+- [x] `MissedWordsTable.tsx`: sorted missed words with rank, word, Japanese meaning, missed count
+- [x] Handle "perfect score" case (no missed words)
+- [x] "Try Again" button: `navigate('/practice', { state: { config: result.config } })`
+- [x] "New Session" button: `navigate('/')`
 
 ### Phase 8 — Design polish
 
-- [ ] Audit all screens against Google Translate aesthetic reference
-- [ ] Verify text color hierarchy (gray-900 / gray-600 / gray-400) is consistent
-- [ ] Check all interactive states: hover, focus rings, disabled
-- [ ] Verify word transitions feel smooth (opacity fade)
+- [x] Audit all screens against Google Translate aesthetic reference
+- [x] Verify text color hierarchy (gray-900 / gray-600 / gray-400) is consistent
+- [x] Check all interactive states: hover, focus rings, disabled
+- [x] Verify word transitions feel smooth (opacity fade)
 - [ ] Test responsive layout at mobile width (375px) and tablet (768px)
-- [ ] Verify progress bar animation is smooth
-- [ ] Check feedback banners auto-dismiss correctly
-- [ ] Review EN→EN blank sizing across different word lengths
+- [x] Verify progress bar animation is smooth
+- [x] Check feedback banners auto-dismiss correctly
+- [x] Review EN→EN blank sizing across different word lengths
 
 ### Phase 9 — Quality and correctness
 
 - [ ] Test JP→EN mode end-to-end with a small range (e.g. IDs 1–5)
 - [ ] Test EN→EN mode end-to-end with same range
-- [ ] Verify case-insensitive judgment (`"Create"` and `"create"` both accepted)
-- [ ] Verify whitespace trimming (`" create "` accepted)
-- [ ] Verify re-queue logic: word incorrectly answered never immediately repeats
-- [ ] Verify completion: session ends exactly when all words answered correctly
-- [ ] Verify results accuracy math is correct
-- [ ] Test range validation edge cases (start > end, values out of 1–1900)
+- [x] Verify case-insensitive judgment (`"Create"` and `"create"` both accepted)
+- [x] Verify whitespace trimming (`" create "` accepted)
+- [x] Verify re-queue logic: word incorrectly answered never immediately repeats
+- [x] Verify completion: session ends exactly when all words answered correctly
+- [x] Verify results accuracy math is correct
+- [x] Test range validation edge cases (start > end, values out of 1–1900)
 - [ ] Test with full range (1–1900) to ensure no performance issues
-- [ ] Test `parseSentence` with conjugated forms from actual `words.json` entries (spot-check 10+ words)
-- [ ] Test browser back button from results screen (should return to setup, skipping practice)
-- [ ] Test page refresh on `/practice` (should redirect to `/`)
-- [ ] Test page refresh on `/results` (should redirect to `/`)
+- [x] Test `parseSentence` with conjugated forms from actual `words.json` entries (spot-check 10+ words)
+- [x] Test browser back button from results screen (should return to setup, skipping practice)
+- [x] Test page refresh on `/practice` (should redirect to `/`)
+- [x] Test page refresh on `/results` (should redirect to `/`)
 
 ### Phase 10 — Deploy
 
-- [ ] `npm run build` — verify `dist/` is clean, no errors
-- [ ] Check `dist/_redirects` exists
-- [ ] Check `dist/words.json` exists and is ~524KB
+- [x] `npm run build` — verify `dist/` is clean, no errors
+- [x] Check `dist/_redirects` exists
+- [x] Check `dist/words.json` exists and is ~524KB
 - [ ] Create Cloudflare Pages project linked to repo
 - [ ] Set build command (`npm run build`) and output directory (`dist`) in Pages settings
 - [ ] Set Node.js version to 20 in Pages environment variables
@@ -715,3 +715,21 @@ This file is copied verbatim to `dist/` by Vite (anything in `public/` is copied
 - [ ] Verify `words.json` loads from CDN (check Network tab; should be a separate request, not bundled)
 - [ ] Verify SPA `_redirects` rule: navigate to `/practice` directly and confirm it loads `index.html`
 - [ ] Smoke test both practice modes on production
+
+---
+
+## Implementation Notes
+
+- **Two-panel layout adopted for all screens** — SetupScreen, PracticeScreen, and ResultsScreen all use a white-left / `#f8f9fa`-right split mirroring Google Translate's visual structure. The left panel holds the source content (config or word prompt); the right panel holds the action area (session summary + start, or answer input + feedback, or stats + actions).
+
+- **Mode tabs inlined into SetupScreen** — The plan called for a separate `ModeSelector` component. During implementation the tabs were inlined directly into `SetupScreen` using the Google Translate tab-with-underline pattern. The separate `ModeSelector.tsx` component still exists as a standalone file but is no longer used by SetupScreen.
+
+- **`StatCard` component created but not used in final ResultsScreen** — The plan called for a `StatCard` component for the results stats row. The final ResultsScreen uses an inline stats bar styled as a panel header instead, which integrates more naturally into the two-panel card. `StatCard.tsx` remains in `src/components/` and is unused.
+
+- **`SessionStats` component inlined in PracticeScreen** — Rather than using the standalone `SessionStats.tsx` component, PracticeScreen embeds an `ElapsedTimer` helper function inline and formats the counter inline. `SessionStats.tsx` remains in `src/components/` but is unused. Both components can be removed if desired.
+
+- **`design system: --color-surface-gray` added** — The plan's `@theme` block did not include `#f8f9fa`. Added `--color-surface-gray: #f8f9fa` to `src/index.css` to support the two-panel layout.
+
+- **`AnswerInput` no longer accepts a `disabled` prop** — The plan included `disabled-when-empty` as a requirement. The final implementation disables the *Submit button* when the input is empty but does not disable the input field itself. The Enter key still submits (or advances) on any keypress; the parent handler in `PracticeScreen` guards against empty submission.
+
+- **Build output: 249KB JS, 20KB CSS** — `words.json` (524KB) is separate. The JS bundle is within normal range for a React + React Router app.

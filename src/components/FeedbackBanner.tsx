@@ -6,21 +6,26 @@ interface Props {
 }
 
 export default function FeedbackBanner({ state, correctAnswer }: Props) {
-  if (state === null) return <div className="h-10" />;
+  if (state === null) return null;
 
   if (state === 'correct') {
     return (
-      <div className="h-10 flex items-center justify-center rounded-lg bg-green-50 border border-green-200">
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-green-600 text-lg leading-none">✓</span>
         <span className="text-green-700 text-sm font-medium">Correct!</span>
       </div>
     );
   }
 
   return (
-    <div className="h-10 flex items-center justify-center rounded-lg bg-red-50 border border-red-200">
-      <span className="text-red-700 text-sm font-medium">
-        The answer was: <span className="font-bold">{correctAnswer}</span>
-      </span>
+    <div className="flex items-start gap-2 px-1">
+      <span className="text-red-500 text-lg leading-none mt-px">✗</span>
+      <div>
+        <p className="text-red-600 text-sm font-medium">Incorrect</p>
+        <p className="text-gray-600 text-sm mt-0.5">
+          Answer: <span className="font-semibold text-gray-900">{correctAnswer}</span>
+        </p>
+      </div>
     </div>
   );
 }

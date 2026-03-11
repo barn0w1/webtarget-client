@@ -6,12 +6,12 @@ interface Props {
 
 export default function JpEnPrompt({ word }: Props) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-      <span className="inline-block bg-blue-google-light text-blue-google text-xs font-medium px-2.5 py-0.5 rounded-full mb-4">
+    <div className="p-8 flex flex-col gap-4 h-full">
+      <span className="inline-block bg-blue-google-light text-blue-google text-xs font-medium px-2.5 py-0.5 rounded-full self-start">
         {word.part_of_speech}
       </span>
-      <p className="text-2xl font-medium text-gray-900 mb-3 leading-snug">{word.japanese_meaning}</p>
-      <p className="font-mono text-sm text-gray-400">{word.pronunciation}</p>
+      <p className="text-2xl font-normal text-gray-900 leading-snug">{word.japanese_meaning}</p>
+      <p className="text-sm text-gray-400 font-mono mt-auto">{word.pronunciation}</p>
     </div>
   );
 }

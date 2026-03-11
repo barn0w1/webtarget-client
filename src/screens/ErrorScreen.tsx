@@ -6,7 +6,7 @@ export default function ErrorScreen({ message }: Props) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4">
       <p className="text-xs text-gray-400 mb-8 tracking-wide">webtarget.dev</p>
-      <div className="bg-white border border-gray-200 rounded-xl p-6 max-w-md w-full text-center shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full text-center">
         <p className="text-gray-900 font-medium mb-2">Failed to load vocabulary</p>
         <p className="text-gray-500 text-sm mb-6 font-mono">{message}</p>
         <button
