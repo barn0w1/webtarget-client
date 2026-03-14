@@ -11,7 +11,6 @@ export default function JpEnPrompt({ word }: Props) {
         {word.part_of_speech}
       </span>
       <p className="text-2xl font-normal text-gray-900 leading-snug">{word.japanese_meaning}</p>
-      <p className="text-sm text-gray-400 font-mono mt-auto">{word.pronunciation}</p>
     </div>
   );
 }
