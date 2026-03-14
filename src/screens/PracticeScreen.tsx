@@ -69,7 +69,7 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
       <ProgressBar completedCount={completedCount} totalCount={totalCount} />
 
       <div className="flex flex-col items-center flex-1 px-4 py-6">
-        <header className="w-full max-w-4xl mb-4 flex items-center justify-between">
+        <header className="w-full max-w-2xl mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-gray-700">webtarget.dev</span>
             <span className="text-gray-200">|</span>
@@ -83,23 +83,21 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
         </header>
 
         {currentWord && (
-          <div className="w-full max-w-4xl border border-gray-200 rounded-2xl overflow-hidden">
-            <div className="flex min-h-[300px]">
-              <div className="flex-1 border-r border-gray-200 bg-white">
-                <WordPrompt word={currentWord} mode={config.mode} />
-              </div>
-              <div className="w-80 flex-shrink-0 bg-surface-gray p-6 flex flex-col">
-                {card.phase === 'feedback' ? (
-                  <ReviewPanel
-                    word={card.word}
-                    userInput={card.userInput}
-                    isCorrect={card.isCorrect}
-                    onNext={handleNext}
-                  />
-                ) : (
-                  <AnswerInput value={input} onChange={setInput} onSubmit={handleSubmit} />
-                )}
-              </div>
+          <div className="w-full max-w-2xl border border-gray-200 rounded-2xl overflow-hidden">
+            <div className="bg-white">
+              <WordPrompt word={currentWord} mode={config.mode} />
+            </div>
+            <div className="bg-surface-gray border-t border-gray-200 p-6">
+              {card.phase === 'feedback' ? (
+                <ReviewPanel
+                  word={card.word}
+                  userInput={card.userInput}
+                  isCorrect={card.isCorrect}
+                  onNext={handleNext}
+                />
+              ) : (
+                <AnswerInput value={input} onChange={setInput} onSubmit={handleSubmit} />
+              )}
             </div>
           </div>
         )}
@@ -117,40 +115,37 @@ interface ReviewPanelProps {
 
 function ReviewPanel({ word, userInput, isCorrect, onNext }: ReviewPanelProps) {
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col gap-4">
 
       {/* Status label */}
-      <p className={`text-[11px] font-semibold uppercase tracking-widest mb-5 ${
+      <p className={`text-[11px] font-semibold uppercase tracking-widest ${
         isCorrect ? 'text-green-600' : 'text-red-500'
       }`}>
         {isCorrect ? '✓  Correct' : '✗  Incorrect'}
       </p>
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Wrong answer — struck through, only on incorrect */}
-        {!isCorrect && (
-          <p className="text-sm font-mono text-red-400 line-through mb-3 opacity-80">
-            {userInput}
-          </p>
-        )}
-
-        {/* Word — large, light weight, Google Translate result style */}
-        <p className="text-4xl font-light text-gray-800 leading-none tracking-tight">
-          {word.word}
+      {/* Wrong answer — struck through, only on incorrect */}
+      {!isCorrect && (
+        <p className="text-sm font-mono text-red-400 line-through opacity-80">
+          {userInput}
         </p>
+      )}
 
-        {word.pronunciation && (
-          <p className="text-sm text-gray-400 mt-3">{word.pronunciation}</p>
-        )}
-        <p className="text-xs text-gray-400 italic mt-1">{word.part_of_speech}</p>
-      </div>
+      {/* Word — large, light weight, Google Translate result style */}
+      <p className="text-4xl font-light text-gray-800 leading-none tracking-tight">
+        {word.word}
+      </p>
+
+      {word.pronunciation && (
+        <p className="text-sm text-gray-400">{word.pronunciation}</p>
+      )}
+      <p className="text-xs text-gray-400 italic">{word.part_of_speech}</p>
 
       {/* Next button */}
       <button
         type="button"
         onClick={onNext}
-        className="w-full bg-blue-google text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-blue-google-hover transition-colors duration-150 cursor-pointer"
+        className="w-full mt-2 bg-blue-google text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-blue-google-hover transition-colors duration-150 cursor-pointer"
       >
         Next →
       </button>
