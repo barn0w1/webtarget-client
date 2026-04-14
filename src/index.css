@@ -157,21 +157,28 @@ button {
 }
 
 .mode-toggle {
-  display: inline-flex;
+  display: flex;
+  width: fit-content;
   align-items: center;
-  padding: 4px;
+  padding: 3px;
   gap: 4px;
   border-radius: 999px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
+  overflow: hidden;
 }
 
 .mode-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   border-radius: 999px;
   padding: 8px 16px;
   font-size: 13px;
   font-weight: 400;
   color: var(--color-text-secondary);
+  background: transparent;
   cursor: pointer;
   transition: background-color 120ms ease, color 120ms ease;
 }
@@ -376,6 +383,18 @@ button {
 }
 
 .practice-timer {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.practice-header-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.practice-progress-fraction {
   color: var(--color-text-muted);
   font-size: 13px;
   font-weight: 400;

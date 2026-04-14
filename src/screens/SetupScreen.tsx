@@ -118,8 +118,6 @@ export default function SetupScreen({ words }: Props) {
             Start Practice
           </button>
         </section>
-
-        <p className="subtle-footnote setup-footnote">{words.length.toLocaleString()} words available</p>
       </div>
     </div>
   );

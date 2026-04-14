@@ -72,7 +72,10 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
             <span className="practice-brand-name">webtarget.dev</span>
             <span className="practice-mode-badge">{modeLabel}</span>
           </div>
-          <ElapsedTimer startTime={startTimeRef.current} className="practice-timer" />
+          <div className="practice-header-meta">
+            <span className="practice-progress-fraction">{completedCount} / {totalCount}</span>
+            <ElapsedTimer startTime={startTimeRef.current} className="practice-timer" />
+          </div>
         </header>
         <ProgressBar completedCount={completedCount} totalCount={totalCount} />
       </div>
