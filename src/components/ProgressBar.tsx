@@ -6,9 +6,9 @@ interface Props {
 export default function ProgressBar({ completedCount, totalCount }: Props) {
   const pct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
   return (
-    <div className="h-1 bg-gray-100 w-full overflow-hidden">
+    <div className="progress-bar">
       <div
-        className="h-full bg-blue-google transition-all duration-300"
+        className="progress-bar-fill"
         style={{ width: `${pct}%` }}
       />
     </div>

@@ -13,6 +13,7 @@ export default function ResultsScreen() {
   const totalWords = result.completedWords.length;
   const totalIncorrect = result.completedWords.reduce((sum, r) => sum + r.incorrectCount, 0);
   const totalAttempts = totalWords + totalIncorrect;
+  const firstTryCorrect = result.completedWords.filter(r => r.incorrectCount === 0).length;
   const accuracyPct = Math.round((totalWords / totalAttempts) * 100);
   const minutes = Math.floor(elapsedMs / 60000);
   const seconds = Math.floor((elapsedMs % 60000) / 1000);
@@ -23,59 +24,70 @@ export default function ResultsScreen() {
     .sort((a, b) => b.incorrectCount - a.incorrectCount);
 
   const modeLabel = result.config.mode === 'jp-en' ? 'JP → EN' : 'EN → EN';
+  const accuracyClass = accuracyPct >= 70
+    ? 'results-accuracy-good'
+    : accuracyPct >= 50
+      ? 'results-accuracy-warn'
+      : 'results-accuracy-bad';
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4 py-10">
-      <header className="w-full max-w-4xl mb-6 flex items-center gap-3">
-        <span className="text-base font-medium text-gray-700 tracking-tight">webtarget.dev</span>
-        <span className="text-gray-300 text-sm">Session Complete</span>
-      </header>
+    <div className="app-screen results-screen">
+      <div className="app-shell results-shell">
+        <header className="brand-header">
+          <span className="brand-name">webtarget.dev</span>
+          <span className="brand-context">Session Complete</span>
+        </header>
 
-      <div className="w-full max-w-4xl border border-gray-200 rounded-2xl overflow-hidden">
-        {/* Stats row — google-translate header style */}
-        <div className="bg-surface-gray border-b border-gray-200 px-8 py-5 flex items-center gap-10">
-          <div>
-            <p className="text-2xl font-semibold text-gray-900">{elapsedFormatted}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Time</p>
+        <section className="results-card">
+          <div className="results-summary">
+            <p className="results-score-label">Session Score</p>
+            <p className="results-score-value">
+              {firstTryCorrect} / {totalWords}
+            </p>
+            <p className={`results-accuracy ${accuracyClass}`}>
+              {accuracyPct}%
+            </p>
+            <p className="results-meta">
+              {elapsedFormatted} · {modeLabel} · IDs {result.config.start}–{result.config.end}
+            </p>
           </div>
-          <div className="w-px h-8 bg-gray-200" />
-          <div>
-            <p className="text-2xl font-semibold text-gray-900">{accuracyPct}%</p>
-            <p className="text-xs text-gray-500 mt-0.5">Accuracy</p>
-          </div>
-          <div className="w-px h-8 bg-gray-200" />
-          <div>
-            <p className="text-2xl font-semibold text-gray-900">{totalWords}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Words</p>
-          </div>
-          <div className="ml-auto text-right">
-            <p className="text-xs text-gray-500">{modeLabel}</p>
-            <p className="text-xs text-gray-400 mt-0.5">IDs {result.config.start}–{result.config.end}</p>
-          </div>
-        </div>
 
-        {/* Missed words table */}
-        <div className="bg-white p-8">
-          <MissedWordsTable missedWords={missedWords} />
-        </div>
+          <div className="results-metrics">
+            <div className="metric-card">
+              <p className="metric-label">Time</p>
+              <p className="metric-value">{elapsedFormatted}</p>
+            </div>
+            <div className="metric-card">
+              <p className="metric-label">Total Attempts</p>
+              <p className="metric-value">{totalAttempts}</p>
+            </div>
+            <div className="metric-card">
+              <p className="metric-label">Words Missed</p>
+              <p className="metric-value">{missedWords.length}</p>
+            </div>
+          </div>
 
-        {/* Actions */}
-        <div className="bg-surface-gray border-t border-gray-200 px-8 py-4 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="border border-gray-200 text-gray-600 rounded-lg px-5 py-2 text-sm font-medium hover:border-gray-300 hover:bg-white transition-colors duration-150 cursor-pointer"
-          >
-            New Session
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/practice', { state: { config: result.config } })}
-            className="bg-blue-google text-white rounded-lg px-5 py-2 text-sm font-medium hover:bg-blue-google-hover transition-colors duration-150 cursor-pointer"
-          >
-            Try Again
-          </button>
-        </div>
+          <div className="results-table-section">
+            <MissedWordsTable missedWords={missedWords} />
+          </div>
+
+          <div className="results-actions">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="button-ghost results-action-button"
+            >
+              Back to Setup
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/practice', { state: { config: result.config } })}
+              className="button-primary results-action-button"
+            >
+              Practice Again
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );

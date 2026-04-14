@@ -23,7 +23,7 @@ type CardState =
 
 function PracticeSession({ words, config }: { words: Word[]; config: SessionConfig }) {
   const navigate = useNavigate();
-  const { currentWord, queueLength, completedCount, totalCount, evaluateAnswer, advance, result } =
+  const { currentWord, completedCount, totalCount, evaluateAnswer, advance, result } =
     useSession(words, config);
 
   const [input, setInput] = useState('');
@@ -65,33 +65,39 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
   const modeLabel = config.mode === 'jp-en' ? 'JP → EN' : 'EN → EN';
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <ProgressBar completedCount={completedCount} totalCount={totalCount} />
-
-      <div className="flex flex-col items-center flex-1 px-4 py-6">
-        <header className="w-full max-w-2xl mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-gray-700">webtarget.dev</span>
-            <span className="text-gray-200">|</span>
-            <span className="text-xs text-gray-400">{modeLabel}</span>
+    <div className="practice-screen">
+      <div className="practice-sticky">
+        <header className="practice-header">
+          <div className="practice-brand">
+            <span className="practice-brand-name">webtarget.dev</span>
+            <span className="practice-mode-badge">{modeLabel}</span>
           </div>
-          <div className="flex items-center gap-5 text-sm text-gray-400">
-            <ElapsedTimer startTime={startTimeRef.current} />
-            <span>{completedCount}<span className="text-gray-300 mx-1">/</span>{totalCount} words</span>
-            <span className="text-xs text-gray-300">{queueLength} in queue</span>
+          <div className="practice-header-meta">
+            <span className="practice-progress-fraction">{completedCount} / {totalCount}</span>
+            <ElapsedTimer startTime={startTimeRef.current} className="practice-timer" />
           </div>
         </header>
+        <ProgressBar completedCount={completedCount} totalCount={totalCount} />
+      </div>
 
+      <main className="practice-main">
         {currentWord && (
-          <div className="w-full max-w-2xl border border-gray-200 rounded-2xl overflow-hidden">
-            <div className="bg-white">
+          <section className="question-card unified-card">
+            <div className="question-body">
               <WordPrompt word={currentWord} mode={config.mode} />
             </div>
-            <div className="bg-surface-gray border-t border-gray-200 p-6">
+            <hr className="task-divider" aria-hidden="true" />
+
+            <div className={`task-lower ${
+              card.phase === 'feedback'
+                ? card.isCorrect
+                  ? 'task-lower-correct'
+                  : 'task-lower-incorrect'
+                : ''
+            }`}>
               {card.phase === 'feedback' ? (
                 <ReviewPanel
                   word={card.word}
-                  userInput={card.userInput}
                   isCorrect={card.isCorrect}
                   onNext={handleNext}
                 />
@@ -99,53 +105,41 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
                 <AnswerInput value={input} onChange={setInput} onSubmit={handleSubmit} />
               )}
             </div>
-          </div>
+          </section>
         )}
-      </div>
+      </main>
     </div>
   );
 }
 
 interface ReviewPanelProps {
   word: Word;
-  userInput: string;
   isCorrect: boolean;
   onNext: () => void;
 }
 
-function ReviewPanel({ word, userInput, isCorrect, onNext }: ReviewPanelProps) {
+function ReviewPanel({ word, isCorrect, onNext }: ReviewPanelProps) {
+  const meta = [
+    word.pronunciation ? `[${word.pronunciation}]` : '',
+    !isCorrect ? word.part_of_speech : '',
+  ].filter(Boolean).join(' · ');
+
   return (
-    <div className="flex flex-col gap-4">
-
-      {/* Status label */}
-      <p className={`text-[11px] font-semibold uppercase tracking-widest ${
-        isCorrect ? 'text-green-600' : 'text-red-500'
-      }`}>
-        {isCorrect ? '✓  Correct' : '✗  Incorrect'}
-      </p>
-
-      {/* Wrong answer — struck through, only on incorrect */}
-      {!isCorrect && (
-        <p className="text-sm font-mono text-red-400 line-through opacity-80">
-          {userInput}
+    <div className="review-panel">
+      {isCorrect && (
+        <p className="review-status review-status-correct" aria-label="Correct answer">
+          <span className="review-status-icon" aria-hidden="true">✓</span>
         </p>
       )}
 
-      {/* Word — large, light weight, Google Translate result style */}
-      <p className="text-4xl font-light text-gray-800 leading-none tracking-tight">
-        {word.word}
-      </p>
+      <p className="review-answer">{word.word}</p>
 
-      {word.pronunciation && (
-        <p className="text-sm text-gray-400">{word.pronunciation}</p>
-      )}
-      <p className="text-xs text-gray-400 italic">{word.part_of_speech}</p>
+      <p className="review-meta">{meta}</p>
 
-      {/* Next button */}
       <button
         type="button"
         onClick={onNext}
-        className="w-full mt-2 bg-blue-google text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-blue-google-hover transition-colors duration-150 cursor-pointer"
+        className="next-inline-button"
       >
         Next →
       </button>
@@ -153,7 +147,7 @@ function ReviewPanel({ word, userInput, isCorrect, onNext }: ReviewPanelProps) {
   );
 }
 
-function ElapsedTimer({ startTime }: { startTime: number }) {
+function ElapsedTimer({ startTime, className }: { startTime: number; className?: string }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -162,5 +156,5 @@ function ElapsedTimer({ startTime }: { startTime: number }) {
   const ms = now - startTime;
   const m = Math.floor(ms / 60000);
   const s = Math.floor((ms % 60000) / 1000);
-  return <span>{m}:{s.toString().padStart(2, '0')}</span>;
+  return <span className={className}>{m}:{s.toString().padStart(2, '0')}</span>;
 }

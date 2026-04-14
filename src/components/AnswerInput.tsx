@@ -17,8 +17,10 @@ export default function AnswerInput({ value, onChange, onSubmit }: Props) {
     if (e.key === 'Enter') onSubmit();
   }
 
+  const canSubmit = value.trim() !== '';
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className="answer-form" role="group" aria-label="Answer input">
       <input
         ref={inputRef}
         type="text"
@@ -26,16 +28,17 @@ export default function AnswerInput({ value, onChange, onSubmit }: Props) {
         onChange={e => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Type the English word…"
-        className="w-full border border-gray-200 rounded-lg px-4 py-3 text-base bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-google focus:border-transparent placeholder:text-gray-400 transition-shadow duration-150"
+        className="answer-text-input"
       />
-      <button
-        type="button"
-        disabled={value.trim() === ''}
-        onClick={onSubmit}
-        className="w-full bg-blue-google text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-blue-google-hover transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-      >
-        Submit
-      </button>
+      {canSubmit && (
+        <button
+          type="button"
+          onClick={onSubmit}
+          className="answer-inline-button"
+        >
+          Submit →
+        </button>
+      )}
     </div>
   );
 }

@@ -10,22 +10,20 @@ export default function FeedbackBanner({ state, correctAnswer }: Props) {
 
   if (state === 'correct') {
     return (
-      <div className="flex items-center gap-2 px-1">
-        <span className="text-green-600 text-lg leading-none">✓</span>
-        <span className="text-green-700 text-sm font-medium">Correct!</span>
-      </div>
+      <p className="review-status review-status-correct">
+        <span className="review-status-icon" aria-hidden="true">✓</span>
+        <span>Correct</span>
+      </p>
     );
   }
 
   return (
-    <div className="flex items-start gap-2 px-1">
-      <span className="text-red-500 text-lg leading-none mt-px">✗</span>
-      <div>
-        <p className="text-red-600 text-sm font-medium">Incorrect</p>
-        <p className="text-gray-600 text-sm mt-0.5">
-          Answer: <span className="font-semibold text-gray-900">{correctAnswer}</span>
-        </p>
-      </div>
+    <div>
+      <p className="review-status review-status-incorrect">
+        <span className="review-status-icon" aria-hidden="true">✕</span>
+        <span>Incorrect</span>
+      </p>
+      <p className="review-answer review-answer-incorrect">Answer: {correctAnswer}</p>
     </div>
   );
 }
