@@ -37,14 +37,14 @@ export default function SetupScreen({ words }: Props) {
   ];
 
   return (
-    <div className="app-screen">
-      <div className="app-shell">
+    <div className="app-screen setup-screen">
+      <div className="app-shell setup-shell">
         <header className="brand-header">
           <span className="brand-name">webtarget.dev</span>
           <span className="brand-context">Vocabulary Practice</span>
         </header>
 
-        <section className="setup-card">
+        <section className="setup-card setup-flow">
           <div className="mode-toggle" role="tablist" aria-label="Practice mode">
             {modes.map(m => (
               <button
@@ -60,73 +60,53 @@ export default function SetupScreen({ words }: Props) {
             ))}
           </div>
 
-          <div className="setup-content">
-            <div className="setup-config">
-              <div>
-                <p className="section-label">Word ID Range</p>
-                <div className="range-grid">
-                  <div className="range-field">
-                    <label className="range-field-label" htmlFor="range-start">
-                      Start
-                    </label>
-                    <input
-                      id="range-start"
-                      type="number"
-                      min={1}
-                      max={1900}
-                      value={start}
-                      onChange={e => setStart(Number(e.target.value))}
-                      className="range-input"
-                    />
-                  </div>
-                  <span className="range-separator" aria-hidden="true">
-                    —
-                  </span>
-                  <div className="range-field">
-                    <label className="range-field-label" htmlFor="range-end">
-                      End
-                    </label>
-                    <input
-                      id="range-end"
-                      type="number"
-                      min={1}
-                      max={1900}
-                      value={end}
-                      onChange={e => setEnd(Number(e.target.value))}
-                      className="range-input"
-                    />
-                  </div>
+          <div className="setup-config">
+            <div>
+              <div className="range-grid setup-range-grid">
+                <div className="range-field setup-range-field">
+                  <input
+                    id="range-start"
+                    type="number"
+                    min={1}
+                    max={1900}
+                    value={start}
+                    onChange={e => setStart(Number(e.target.value))}
+                    className="range-input"
+                    aria-label="Start word ID"
+                    placeholder="Start"
+                  />
                 </div>
-                {rangeError && <p className="form-error">{rangeError}</p>}
+                <span className="range-separator" aria-hidden="true">
+                  —
+                </span>
+                <div className="range-field setup-range-field">
+                  <input
+                    id="range-end"
+                    type="number"
+                    min={1}
+                    max={1900}
+                    value={end}
+                    onChange={e => setEnd(Number(e.target.value))}
+                    className="range-input"
+                    aria-label="End word ID"
+                    placeholder="End"
+                  />
+                </div>
               </div>
-
-              <div>
-                <p className="section-label">Mode</p>
-                <p className="mode-help">
-                  {mode === 'jp-en'
-                    ? 'See Japanese meaning, type the English word.'
-                    : 'See an English sentence with a blank, then fill in the missing word.'}
+              {rangeError ? (
+                <p className="form-error">{rangeError}</p>
+              ) : (
+                <p className="setup-selection-line" aria-live="polite">
+                  {wordCount} words · IDs {start}–{end}
                 </p>
-              </div>
+              )}
             </div>
 
-            <aside className="setup-summary" aria-live="polite">
-              {!rangeError ? (
-                <>
-                  <div>
-                    <p className="summary-count">{wordCount}</p>
-                    <p className="summary-label">words selected</p>
-                  </div>
-                  <div>
-                    <span className="summary-badge">
-                      IDs {start}–{end}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <p className="summary-placeholder">Enter a valid range to continue.</p>
-              )}
-            </aside>
+            <p className="mode-help">
+              {mode === 'jp-en'
+                ? 'See Japanese meaning, type the English word.'
+                : 'See an English sentence with a blank, then fill in the missing word.'}
+            </p>
           </div>
 
           <button
@@ -139,7 +119,7 @@ export default function SetupScreen({ words }: Props) {
           </button>
         </section>
 
-        <p className="subtle-footnote">{words.length.toLocaleString()} words available</p>
+        <p className="subtle-footnote setup-footnote">{words.length.toLocaleString()} words available</p>
       </div>
     </div>
   );

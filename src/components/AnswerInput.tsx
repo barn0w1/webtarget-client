@@ -17,8 +17,10 @@ export default function AnswerInput({ value, onChange, onSubmit }: Props) {
     if (e.key === 'Enter') onSubmit();
   }
 
+  const canSubmit = value.trim() !== '';
+
   return (
-    <div className="answer-form">
+    <div className="answer-form" role="group" aria-label="Answer input">
       <input
         ref={inputRef}
         type="text"
@@ -28,14 +30,15 @@ export default function AnswerInput({ value, onChange, onSubmit }: Props) {
         placeholder="Type the English word…"
         className="answer-text-input"
       />
-      <button
-        type="button"
-        disabled={value.trim() === ''}
-        onClick={onSubmit}
-        className="button-primary answer-submit-button"
-      >
-        Submit
-      </button>
+      {canSubmit && (
+        <button
+          type="button"
+          onClick={onSubmit}
+          className="answer-inline-button"
+        >
+          Submit →
+        </button>
+      )}
     </div>
   );
 }

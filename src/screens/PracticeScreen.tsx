@@ -23,7 +23,7 @@ type CardState =
 
 function PracticeSession({ words, config }: { words: Word[]; config: SessionConfig }) {
   const navigate = useNavigate();
-  const { currentWord, queueLength, completedCount, totalCount, evaluateAnswer, advance, result } =
+  const { currentWord, completedCount, totalCount, evaluateAnswer, advance, result } =
     useSession(words, config);
 
   const [input, setInput] = useState('');
@@ -70,47 +70,39 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
         <header className="practice-header">
           <div className="practice-brand">
             <span className="practice-brand-name">webtarget.dev</span>
-            <span className="practice-mode">{modeLabel}</span>
+            <span className="practice-mode-badge">{modeLabel}</span>
           </div>
-
-          <div className="practice-stats">
-            <div className="header-metric">
-              <ElapsedTimer startTime={startTimeRef.current} className="header-metric-value" />
-              <span className="header-metric-label">elapsed</span>
-            </div>
-            <div className="header-metric">
-              <span className="header-metric-value">{completedCount}/{totalCount}</span>
-              <span className="header-metric-label">words</span>
-            </div>
-            <div className="header-metric">
-              <span className="header-metric-value">{queueLength}</span>
-              <span className="header-metric-label">queue</span>
-            </div>
-          </div>
+          <ElapsedTimer startTime={startTimeRef.current} className="practice-timer" />
         </header>
         <ProgressBar completedCount={completedCount} totalCount={totalCount} />
       </div>
 
       <main className="practice-main">
         {currentWord && (
-          <>
-            <section className="question-card">
+          <section className="question-card unified-card">
+            <div className="question-body">
               <WordPrompt word={currentWord} mode={config.mode} />
-            </section>
+            </div>
+            <hr className="task-divider" aria-hidden="true" />
 
-            <section className="answer-area">
+            <div className={`task-lower ${
+              card.phase === 'feedback'
+                ? card.isCorrect
+                  ? 'task-lower-correct'
+                  : 'task-lower-incorrect'
+                : ''
+            }`}>
               {card.phase === 'feedback' ? (
                 <ReviewPanel
                   word={card.word}
-                  userInput={card.userInput}
                   isCorrect={card.isCorrect}
                   onNext={handleNext}
                 />
               ) : (
                 <AnswerInput value={input} onChange={setInput} onSubmit={handleSubmit} />
               )}
-            </section>
-          </>
+            </div>
+          </section>
         )}
       </main>
     </div>
@@ -119,38 +111,32 @@ function PracticeSession({ words, config }: { words: Word[]; config: SessionConf
 
 interface ReviewPanelProps {
   word: Word;
-  userInput: string;
   isCorrect: boolean;
   onNext: () => void;
 }
 
-function ReviewPanel({ word, userInput, isCorrect, onNext }: ReviewPanelProps) {
+function ReviewPanel({ word, isCorrect, onNext }: ReviewPanelProps) {
+  const meta = [
+    word.pronunciation ? `[${word.pronunciation}]` : '',
+    !isCorrect ? word.part_of_speech : '',
+  ].filter(Boolean).join(' · ');
+
   return (
     <div className="review-panel">
-      <p className={`review-status ${isCorrect ? 'review-status-correct' : 'review-status-incorrect'}`}>
-        <span className="review-status-icon" aria-hidden="true">
-          {isCorrect ? '✓' : '✕'}
-        </span>
-        <span>{isCorrect ? 'Correct' : 'Incorrect'}</span>
-      </p>
-
-      {!isCorrect && (
-        <p className="review-incorrect-input">{userInput}</p>
+      {isCorrect && (
+        <p className="review-status review-status-correct" aria-label="Correct answer">
+          <span className="review-status-icon" aria-hidden="true">✓</span>
+        </p>
       )}
 
-      <p className={`review-answer ${isCorrect ? 'review-answer-correct' : 'review-answer-incorrect'}`}>
-        {isCorrect ? word.word : `Answer: ${word.word}`}
-      </p>
+      <p className="review-answer">{word.word}</p>
 
-      <p className="review-meta">
-        {word.pronunciation ? `[${word.pronunciation}] · ` : ''}
-        {word.part_of_speech}
-      </p>
+      <p className="review-meta">{meta}</p>
 
       <button
         type="button"
         onClick={onNext}
-        className="button-primary next-button"
+        className="next-inline-button"
       >
         Next →
       </button>
