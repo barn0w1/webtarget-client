@@ -19,9 +19,9 @@ function computeRanks(words: CompletedResult[]): number[] {
 export default function MissedWordsTable({ missedWords }: Props) {
   if (missedWords.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <p className="text-lg font-medium text-gray-900 mb-1">Perfect score!</p>
-        <p className="text-sm">You answered every word correctly on the first try.</p>
+      <div className="missed-empty">
+        <p className="missed-empty-title">Perfect score!</p>
+        <p className="missed-empty-copy">You answered every word correctly on the first try.</p>
       </div>
     );
   }
@@ -30,26 +30,26 @@ export default function MissedWordsTable({ missedWords }: Props) {
 
   return (
     <div>
-      <h2 className="text-sm font-medium text-gray-700 mb-3">
+      <h2 className="missed-title">
         Words to review ({missedWords.length})
       </h2>
-      <div className="overflow-x-auto rounded-xl border border-gray-200">
-        <table className="w-full text-sm">
+      <div className="missed-table-wrap">
+        <table className="missed-table">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 w-10">#</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Word</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Meaning</th>
-              <th className="text-right px-4 py-3 text-xs font-medium text-gray-500">Missed</th>
+            <tr>
+              <th className="missed-rank">#</th>
+              <th>Word</th>
+              <th>Meaning</th>
+              <th className="missed-count">Missed</th>
             </tr>
           </thead>
           <tbody>
             {missedWords.map((entry, i) => (
-              <tr key={entry.word.id} className="border-b border-gray-100 last:border-0">
-                <td className="px-4 py-3 text-gray-400">{ranks[i]}</td>
-                <td className="px-4 py-3 font-medium text-gray-900">{entry.word.word}</td>
-                <td className="px-4 py-3 text-gray-500">{entry.word.japanese_meaning}</td>
-                <td className="px-4 py-3 text-right text-red-500 font-medium">{entry.incorrectCount}×</td>
+              <tr key={entry.word.id}>
+                <td className="missed-rank">{ranks[i]}</td>
+                <td className="missed-word">{entry.word.word}</td>
+                <td>{entry.word.japanese_meaning}</td>
+                <td className="missed-count">{entry.incorrectCount}×</td>
               </tr>
             ))}
           </tbody>

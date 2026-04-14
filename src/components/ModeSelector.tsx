@@ -11,28 +11,26 @@ const options: { mode: PracticeMode; label: string; description: string }[] = [
 ];
 
 export default function ModeSelector({ value, onChange }: Props) {
+  const selected = options.find(opt => opt.mode === value);
+
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-3">Practice Mode</label>
-      <div className="flex flex-col gap-3">
+    <div className="mode-selector">
+      <p className="section-label">Practice Mode</p>
+      <div className="mode-selector-pills" role="tablist" aria-label="Practice mode options">
         {options.map(opt => (
           <button
             key={opt.mode}
             type="button"
             onClick={() => onChange(opt.mode)}
-            className={`text-left border rounded-xl px-4 py-3 transition-all duration-150 cursor-pointer ${
-              value === opt.mode
-                ? 'border-blue-google bg-blue-google-light'
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
+            className={`mode-pill ${value === opt.mode ? 'mode-pill-active' : ''}`}
+            role="tab"
+            aria-selected={value === opt.mode}
           >
-            <span className={`font-medium text-sm ${value === opt.mode ? 'text-blue-google' : 'text-gray-900'}`}>
-              {opt.label}
-            </span>
-            <p className="text-xs text-gray-500 mt-0.5">{opt.description}</p>
+            {opt.label}
           </button>
         ))}
       </div>
+      {selected && <p className="mode-selector-description">{selected.description}</p>}
     </div>
   );
 }

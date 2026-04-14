@@ -21,9 +21,15 @@ export default function SessionStats({ startTime, completedCount, totalCount }: 
   }, []);
 
   return (
-    <div className="flex items-center justify-between text-sm text-gray-500 py-3">
-      <span>{formatElapsed(now - startTime)}</span>
-      <span>{completedCount} / {totalCount} words</span>
+    <div className="session-stats">
+      <div className="session-stat">
+        <span className="session-stat-value">{formatElapsed(now - startTime)}</span>
+        <span className="session-stat-label">elapsed</span>
+      </div>
+      <div className="session-stat">
+        <span className="session-stat-value">{completedCount}/{totalCount}</span>
+        <span className="session-stat-label">words</span>
+      </div>
     </div>
   );
 }
